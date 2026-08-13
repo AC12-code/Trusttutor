@@ -50,6 +50,9 @@ YouTube URL / transcript ──▶ ingest ──▶ chunk (+timestamps) ──�
 
 ## Quickstart
 
+<img width="962" height="857" alt="image" src="https://github.com/user-attachments/assets/8ea99a8a-63c3-4e14-bd8c-e976202f532c" />
+
+
 ```bash
 git clone <your-repo-url> trusttutor
 cd trusttutor
