@@ -54,7 +54,7 @@ YouTube URL / transcript ──▶ ingest ──▶ chunk (+timestamps) ──�
 
 
 ```bash
-git clone <your-repo-url> trusttutor
+git clone https://github.com/AC12-code/Trusttutor.git
 cd trusttutor
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
