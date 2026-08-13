@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrustTutor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    max-width: 760px; margin: 0 auto; padding: 20px;
+    background: #0f1115; color: #e6e6e6;
+  }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .sub { color: #9aa0a6; font-size: 13px; margin-bottom: 16px; }
+  .panel {
+    background: #171a21; border: 1px solid #2a2e37; border-radius: 10px;
+    padding: 12px; margin-bottom: 14px;
+  }
+  .panel label { display: block; font-size: 12px; color: #9aa0a6; margin-bottom: 6px; }
+  .row { display: flex; gap: 8px; }
+  input[type=text] {
+    flex: 1; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a2e37;
+    background: #0f1115; color: #e6e6e6; font-size: 14px;
+  }
+  button {
+    padding: 10px 14px; border-radius: 8px; border: none; cursor: pointer;
+    background: #3b82f6; color: white; font-size: 14px; font-weight: 600;
+  }
+  button.secondary { background: #2a2e37; color: #e6e6e6; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #status { font-size: 12px; color: #9aa0a6; margin-top: 6px; min-height: 16px; }
+
+  #chat {
+    height: 420px; overflow-y: auto; padding: 8px 4px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { max-width: 82%; padding: 10px 12px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+  .msg.user { align-self: flex-end; background: #3b82f6; color: white; border-bottom-right-radius: 2px; }
+  .msg.bot { align-self: flex-start; background: #1f232c; border: 1px solid #2a2e37; border-bottom-left-radius: 2px; }
+  .msg.bot.refused { border-color: #7a4b00; }
+  .cites { font-size: 11px; color: #9aa0a6; margin-top: 6px; }
+  .speak-btn {
+    margin-top: 8px; padding: 4px 10px; font-size: 12px; font-weight: 500;
+    background: #2a2e37; color: #e6e6e6;
+  }
+
+  .composer { display: flex; gap: 8px; margin-top: 12px; }
+  #mic.listening { background: #dc2626; }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9aa0a6; }
+</style>
+</head>
+<body>
+
+<h1>TrustTutor</h1>
+<div class="sub">Grounded chat + voice over any YouTube lesson.</div>
+
+<div class="panel">
+  <label>Load a lesson (YouTube URL)</label>
+  <div class="row">
+    <input type="text" id="url" placeholder="https://youtu.be/VIDEO_ID">
+    <button id="loadBtn" class="secondary">Load</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<div class="panel">
+  <div id="chat"></div>
+  <div class="composer">
+    <input type="text" id="question" placeholder="Ask about the lesson...">
+    <button id="mic" class="secondary" title="Speak your question">🎤</button>
+    <button id="send">Send</button>
+  </div>
+  <div class="toggle">
+    <input type="checkbox" id="voiceMode">
+    <label for="voiceMode">Voice mode — auto-speak every answer (for people who'd rather listen)</label>
+  </div>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const statusEl = document.getElementById('status');
+const questionEl = document.getElementById('question');
+const voiceMode = document.getElementById('voiceMode');
+
+function addMsg(text, who, meta) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + who + (meta && meta.refused ? ' refused' : '');
+  div.textContent = text;
+  if (meta && meta.citations && meta.citations.length) {
+    const c = document.createElement('div');
+    c.className = 'cites';
+    c.textContent = 'cited: ' + meta.citations.join(', ');
+    div.appendChild(c);
+  }
+  if (who === 'bot') {
+    const btn = document.createElement('button');
+    btn.className = 'speak-btn';
+    btn.textContent = '🔊 Play';
+    btn.onclick = () => speak(text, btn);
+    div.appendChild(document.createElement('br'));
+    div.appendChild(btn);
+  }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+let currentAudio = null;
+
+function stopSpeaking() {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+}
+
+// Resolves once playback actually finishes (or fails), so callers can chain
+// the next turn (e.g. re-arm the mic) without racing the audio.
+function speak(text, btn) {
+  return new Promise(async (resolve) => {
+    stopSpeaking();
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    const done = () => { if (btn) { btn.disabled = false; btn.textContent = '🔊 Play'; } resolve(); };
+    try {
+      const res = await fetch('/speak', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({text})
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      currentAudio = audio;
+      const finish = () => {
+        URL.revokeObjectURL(url);
+        if (currentAudio === audio) currentAudio = null;
+        done();
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      await audio.play();
+    } catch (e) {
+      statusEl.textContent = 'Speech failed: ' + e.message;
+      done();
+    }
+  });
+}
+
+let lastInputWasVoice = false;
+let asking = false;
+const sendBtn = document.getElementById('send');
+
+async function ask() {
+  if (asking) return;  // ignore double-submits (e.g. Enter spammed while pending)
+  const q = questionEl.value.trim();
+  if (!q) return;
+  asking = true;
+  sendBtn.disabled = true;
+  micBtn.disabled = true;
+  addMsg(q, 'user');
+  questionEl.value = '';
+  const thinking = addMsg('...', 'bot');
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({question: q})
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body && body.detail ? body.detail : `request failed (${res.status})`);
+    }
+    const data = await res.json();
+    thinking.remove();
+    const bubble = addMsg(data.answer, 'bot', {citations: data.citations, refused: data.refused});
+    if (voiceMode.checked) {
+      const btn = bubble.querySelector('.speak-btn');
+      await speak(data.answer, btn);
+      // Hands-free loop: only auto-listen again if this turn came in by voice.
+      if (lastInputWasVoice) startListening();
+    }
+  } catch (e) {
+    thinking.remove();
+    addMsg('Error: ' + e.message, 'bot', {refused: true});
+  } finally {
+    lastInputWasVoice = false;
+    asking = false;
+    sendBtn.disabled = false;
+    micBtn.disabled = !SpeechRecognition ? true : false;
+  }
+}
+
+sendBtn.onclick = ask;
+questionEl.addEventListener('keydown', e => { if (e.key === 'Enter') ask(); });
+
+document.getElementById('loadBtn').onclick = async () => {
+  const url = document.getElementById('url').value.trim();
+  if (!url) return;
+  statusEl.textContent = 'Loading lesson...';
+  try {
+    const res = await fetch('/ingest', {
+      method: 'POST',
+      headers: {'content-type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'failed');
+    statusEl.textContent = `Loaded: ${data.segments} segments, ${data.chunks} chunks.`;
+    chat.innerHTML = '';
+  } catch (e) {
+    statusEl.textContent = 'Failed to load: ' + e.message;
+  }
+};
+
+// --- Voice input (browser-native, Chrome/Edge only) ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const micBtn = document.getElementById('mic');
+let startListening = () => {};
+
+if (!SpeechRecognition) {
+  micBtn.disabled = true;
+  micBtn.title = 'Voice input needs Chrome or Edge';
+} else {
+  const rec = new SpeechRecognition();
+  rec.continuous = false;
+  rec.interimResults = false;
+  let listening = false;
+
+  rec.onresult = (e) => {
+    questionEl.value = e.results[0][0].transcript;
+    lastInputWasVoice = true;
+    ask();
+  };
+  rec.onend = () => { listening = false; micBtn.classList.remove('listening'); };
+  rec.onerror = () => { listening = false; micBtn.classList.remove('listening'); };
+
+  startListening = () => {
+    // Never listen while the bot is speaking — avoids the mic hearing its own answer.
+    if (listening || currentAudio) return;
+    try {
+      listening = true;
+      micBtn.classList.add('listening');
+      rec.start();
+    } catch (e) {
+      // start() throws if a session is already active in the engine; resync our flag.
+      listening = false;
+      micBtn.classList.remove('listening');
+    }
+  };
+
+  micBtn.onclick = () => {
+    if (listening) { rec.stop(); return; }
+    startListening();
+  };
+}
+</script>
+</body>
+</html>

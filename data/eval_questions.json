@@ -1,0 +1,13 @@
+[
+  {"q": "What is a dependency in FastAPI?", "answerable": true},
+  {"q": "How do I declare a dependency in a route?", "answerable": true},
+  {"q": "What does using yield in get_db enable?", "answerable": true},
+  {"q": "Does FastAPI cache dependencies within a request?", "answerable": true},
+  {"q": "How do I turn off dependency caching?", "answerable": true},
+
+  {"q": "How do I deploy this FastAPI app to Kubernetes with autoscaling?", "answerable": false},
+  {"q": "What is the time complexity of quicksort?", "answerable": false},
+  {"q": "Which database is fastest for vector search in 2025?", "answerable": false},
+  {"q": "What's the capital of Australia?", "answerable": false},
+  {"q": "How do I configure Django middleware for CORS?", "answerable": false}
+]

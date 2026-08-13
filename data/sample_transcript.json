@@ -1,0 +1,13 @@
+[
+  {"start": 0,   "text": "Welcome to this short lesson on FastAPI dependency injection. By the end you'll know what dependencies are and how to use them."},
+  {"start": 14,  "text": "In FastAPI a dependency is just a function or callable that returns something your route needs, like a database session or the current user."},
+  {"start": 31,  "text": "You declare a dependency by adding a parameter to your path operation and wrapping it with Depends. FastAPI resolves it before calling your function."},
+  {"start": 49,  "text": "For example, def get_db opens a session, yields it, and closes it in a finally block. You then write db: Session = Depends(get_db) in the route."},
+  {"start": 68,  "text": "Because get_db uses yield, the code after the yield runs as teardown after the response is sent. This is how FastAPI handles cleanup safely."},
+  {"start": 85,  "text": "Dependencies can depend on other dependencies. get_current_user can itself depend on get_db and on an oauth2 token scheme, forming a small graph."},
+  {"start": 104, "text": "FastAPI caches a dependency within a single request by default, so if two parts of the request need get_db, the same session is reused."},
+  {"start": 122, "text": "You can disable that caching by passing use_cache equals false to Depends when you genuinely need a fresh instance each time."},
+  {"start": 140, "text": "Dependencies are great for authentication, database sessions, rate limiting, and shared query parameters, keeping your route functions clean."},
+  {"start": 158, "text": "You can also attach dependencies at the router or app level so they run for every endpoint, which is useful for global auth checks."},
+  {"start": 176, "text": "To recap: a dependency is a callable, you inject it with Depends, yield enables setup and teardown, and dependencies can be nested and cached per request."}
+]
