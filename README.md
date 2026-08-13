@@ -11,6 +11,7 @@ question — instead of confidently making something up.
 
 Stack: **FastAPI · LangGraph · FAISS / TF-IDF · Python**
 
+<img width="962" height="857" alt="image" src="https://github.com/user-attachments/assets/8ea99a8a-63c3-4e14-bd8c-e976202f532c" />
 ---
 
 ## What it does
@@ -49,8 +50,6 @@ YouTube URL / transcript ──▶ ingest ──▶ chunk (+timestamps) ──�
   behind one interface, or `mock` for offline wiring tests with no key at all.
 
 ## Quickstart
-
-<img width="962" height="857" alt="image" src="https://github.com/user-attachments/assets/8ea99a8a-63c3-4e14-bd8c-e976202f532c" />
 
 
 ```bash
